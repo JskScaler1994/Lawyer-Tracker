@@ -25,7 +25,7 @@ export function Sidebar({ children }) {
     >
       <Link to="/cases/new" style={{ display: "flex", flexDirection: "column", gap: 2, color: "inherit" }}>
         <div className="heading-font" style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-.02em", color: "var(--ink)" }}>
-          Peshi
+          Prasanna
         </div>
         <div className="label" style={{ fontWeight: 600 }}>Case tracker</div>
       </Link>

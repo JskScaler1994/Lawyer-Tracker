@@ -1,4 +1,4 @@
-# Peshi — court case tracker
+# Prasanna — court case tracker
 
 A case tracker for advocates managing their own matters (Indian district/high
 court conventions: CNR numbers, O.S./Crl.M.C./W.P.(C) case types). Built from
