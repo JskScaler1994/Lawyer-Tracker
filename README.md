@@ -1,25 +1,49 @@
-# CODING AGENTS: READ THIS FIRST
+# Peshi — court case tracker
 
-This is a **handoff bundle** from Claude Design (claude.ai/design).
+A case tracker for advocates managing their own matters (Indian district/high
+court conventions: CNR numbers, O.S./Crl.M.C./W.P.(C) case types). Built from
+a Claude Design mockup — see `chats/chat1.md` for the original design
+conversation and `project/` for the exported prototype it was built from.
 
-A user mocked up designs in HTML/CSS/JS using an AI design tool, then exported this bundle so a coding agent can implement the designs for real.
+## Stack
 
-## What you should do — IMPORTANT
+- `client/` — React (Vite) frontend, iPad-first but responsive down to phone
+  widths. The "New case" screen renders a wide two-column layout (with a live
+  record preview) above ~900px, and a single-column mobile layout below it.
+- `server/` — Express API backed by SQLite (`better-sqlite3`), no external
+  database to install.
 
-**Read the chat transcripts first.** There are 1 chat transcript(s) in `chats/`. The transcripts show the full back-and-forth between the user and the design assistant — they tell you **what the user actually wants** and **where they landed** after iterating. Don't skip them. The final HTML files are the output, but the chat is where the intent lives.
+## Running it
 
-**Read `project/Court Case Tracker.dc.html` in full.** The user had this file open when they triggered the handoff, so it's almost certainly the primary design they want built. Read it top to bottom — don't skim. Then **follow its imports**: open every file it pulls in (shared components, CSS, scripts) so you understand how the pieces fit together before you start implementing.
+In two terminals:
 
-**If anything is ambiguous, ask the user to confirm before you start implementing.** It's much cheaper to clarify scope up front than to build the wrong thing.
+```sh
+# API — http://localhost:4000
+cd server
+npm install
+npm run seed   # first time only, seeds a few sample cases
+npm start
 
-## About the design files
+# Frontend — http://localhost:5173
+cd client
+npm install
+npm run dev
+```
 
-The design medium is **HTML/CSS/JS** — these are prototypes, not production code. Your job is to **recreate them pixel-perfectly** in whatever technology makes sense for the target codebase (React, Vue, native, whatever fits). Match the visual output; don't copy the prototype's internal structure unless it happens to fit.
+The client talks to `http://localhost:4000` by default; override with
+`VITE_API_URL` in `client/.env` if the API runs elsewhere.
 
-**Don't render these files in a browser or take screenshots unless the user asks you to.** Everything you need — dimensions, colors, layout rules — is spelled out in the source. Read the HTML and CSS directly; a screenshot won't tell you anything they don't.
+## What's implemented
 
-## Bundle contents
+- **New case** — add a case (number, CNR, status, court, place, last/next
+  hearing). Renders as a two-column form with a live preview and recent cases
+  (wide viewports) or a single-column flow with quick-set date chips
+  (narrow/portrait viewports).
+- **Case detail** — header, status, last/next hearing and filed-date stats,
+  and a hearing history timeline. "Add hearing" records an outcome and
+  optionally schedules the next hearing.
+- **Calendar** — month grid of upcoming hearings with a "next seven days"
+  rail, linking back to each case.
 
-- `README.md` — this file
-- `chats/` — conversation transcripts (read these!)
-- `project/` — the `Court case tracking app` project files (HTML prototypes, assets, components)
+"Hearings" and "Clients" are shown in the sidebar nav but are out of scope
+for this pass (not part of the original mockup) and are disabled.

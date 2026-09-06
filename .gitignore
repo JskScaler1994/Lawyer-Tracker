@@ -1,0 +1,7 @@
+node_modules/
+dist/
+server/data/*.sqlite3
+server/data/*.sqlite3-*
+.env
+.env.local
+*.log
