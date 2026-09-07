@@ -87,7 +87,7 @@ export function CalendarPage() {
                 <div style={{ fontSize: 14, fontWeight: 600, color: "var(--ink-muted)", paddingLeft: 4 }}>{d.n || ""}</div>
                 {d.mark && (
                   <Link
-                    to={`/cases/${d.caseId}`}
+                    to={`/hearings/${d.caseId}`}
                     style={{
                       padding: "5px 7px",
                       borderRadius: 8,
@@ -116,7 +116,7 @@ export function CalendarPage() {
             return (
               <Link
                 key={u.id}
-                to={`/cases/${u.id}`}
+                to={`/hearings/${u.id}`}
                 style={{ display: "flex", gap: 14, alignItems: "flex-start", paddingBottom: 16, borderBottom: "1px solid var(--surface-alt)", color: "inherit" }}
               >
                 <div style={{ width: 52, flex: "none", textAlign: "center" }}>

@@ -157,7 +157,7 @@ export function NewCaseWide({ form: f, set, canSave, saving, error, savedAt, sav
                 {recent.map((c, i) => (
                   <div key={c.id}>
                     {i > 0 && <div style={{ height: 1, background: "var(--surface-alt)", margin: "14px 0" }} />}
-                    <Link to={`/cases/${c.id}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, color: "inherit" }}>
+                    <Link to={`/hearings/${c.id}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, color: "inherit" }}>
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontSize: 16, fontWeight: 600, color: "var(--ink)" }}>{c.case_number}</div>
                         <div style={{ fontSize: 14, color: "var(--muted)" }}>

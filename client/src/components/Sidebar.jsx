@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 
 const NAV_ITEMS = [
   { label: "Cases", to: "/cases/new", match: (path) => path.startsWith("/cases") },
-  { label: "Hearings", disabled: true },
+  { label: "Hearings", to: "/hearings", match: (path) => path.startsWith("/hearings") },
   { label: "Calendar", to: "/calendar", match: (path) => path.startsWith("/calendar") },
   { label: "Clients", disabled: true },
 ];

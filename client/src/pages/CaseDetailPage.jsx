@@ -52,7 +52,7 @@ export function CaseDetailPage() {
           {openMatters.map((c) => (
             <Link
               key={c.id}
-              to={`/cases/${c.id}`}
+              to={`/hearings/${c.id}`}
               style={{
                 padding: "12px 14px",
                 borderRadius: 12,

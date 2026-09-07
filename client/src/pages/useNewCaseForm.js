@@ -76,7 +76,7 @@ export function useNewCaseForm() {
         reminder_enabled: form.reminderEnabled,
       });
       localStorage.removeItem(DRAFT_KEY);
-      navigate(`/cases/${created.id}`);
+      navigate(`/hearings/${created.id}`);
     } catch (e) {
       setError(e.message);
     } finally {
