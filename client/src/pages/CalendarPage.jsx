@@ -75,7 +75,7 @@ export function CalendarPage() {
 
           <div style={{ flex: 1, display: "grid", gridTemplateColumns: "repeat(7,1fr)", gridAutoRows: "1fr", gap: 8, minHeight: 420 }}>
             {calendar?.days.map((d, i) => {
-              const isSelected = d.n && d.date === selectedDate;
+              const isSelected = Boolean(d.n && d.date && selectedDate && d.date === selectedDate);
               return (
                 <div
                   key={i}
