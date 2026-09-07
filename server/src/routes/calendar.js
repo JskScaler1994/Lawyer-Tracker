@@ -29,27 +29,36 @@ calendarRouter.get("/", (req, res) => {
   for (const h of hearings) {
     const d = parseISO(h.next_hearing_date);
     if (d.getUTCFullYear() === year && d.getUTCMonth() === month - 1) {
-      marksByDay.set(d.getUTCDate(), h);
+      const dayNum = d.getUTCDate();
+      if (!marksByDay.has(dayNum)) marksByDay.set(dayNum, []);
+      marksByDay.get(dayNum).push(h);
     }
+  }
+  for (const list of marksByDay.values()) {
+    list.sort((a, b) => (a.next_hearing_time || "").localeCompare(b.next_hearing_time || ""));
   }
 
   const days = [];
   for (let i = 0; i < totalCells; i++) {
     const dayNum = i - leading + 1;
     const inMonth = dayNum >= 1 && dayNum <= daysInMonth;
-    const mark = inMonth ? marksByDay.get(dayNum) : null;
+    const dayHearings = inMonth ? marksByDay.get(dayNum) || [] : [];
+    const first = dayHearings[0];
     days.push({
       n: inMonth ? dayNum : null,
-      mark: mark ? mark.case_number.split(" / ")[0] : null,
-      time: mark ? mark.next_hearing_time : null,
-      caseId: mark ? mark.id : null,
+      date: inMonth ? `${year}-${String(month).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}` : null,
+      mark: first ? first.case_number.split(" / ")[0] : null,
+      time: first ? first.next_hearing_time : null,
+      caseId: first ? first.id : null,
+      moreCount: Math.max(0, dayHearings.length - 1),
+      hearings: dayHearings,
     });
   }
 
   res.json({
     year,
     month,
-    hearingCount: [...marksByDay.values()].length,
+    hearingCount: hearings.length,
     days,
   });
 });

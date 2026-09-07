@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Sidebar } from "../components/Sidebar.jsx";
 import { api } from "../lib/api";
-import { formatDayMonth, MONTH_NAMES, todayISO } from "../lib/dates";
+import { formatLong, MONTH_NAMES, relativeLabel, todayISO } from "../lib/dates";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -11,14 +11,15 @@ export function CalendarPage() {
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1); // 1-12
   const [calendar, setCalendar] = useState(null);
-  const [upcoming, setUpcoming] = useState({ upcoming: [], needsDates: [] });
+  const [needsDates, setNeedsDates] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(null);
 
   useEffect(() => {
     api.getCalendar(year, month).then(setCalendar).catch(() => {});
   }, [year, month]);
 
   useEffect(() => {
-    api.getUpcoming(7).then(setUpcoming).catch(() => {});
+    api.getUpcoming(7).then((r) => setNeedsDates(r.needsDates)).catch(() => {});
   }, []);
 
   function shiftMonth(delta) {
@@ -28,12 +29,15 @@ export function CalendarPage() {
     if (m > 12) { m = 1; y += 1; }
     setMonth(m);
     setYear(y);
+    setSelectedDate(null);
   }
 
   const todayNum = (() => {
     const t = todayISO().split("-");
     return t[0] === String(year) && Number(t[1]) === month ? Number(t[2]) : null;
   })();
+
+  const selectedDay = selectedDate ? calendar?.days.find((d) => d.date === selectedDate) || null : null;
 
   return (
     <div className="app-shell">
@@ -70,75 +74,107 @@ export function CalendarPage() {
           </div>
 
           <div style={{ flex: 1, display: "grid", gridTemplateColumns: "repeat(7,1fr)", gridAutoRows: "1fr", gap: 8, minHeight: 420 }}>
-            {calendar?.days.map((d, i) => (
-              <div
-                key={i}
-                className="card"
-                style={{
-                  padding: "8px 6px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 6,
-                  overflow: "hidden",
-                  opacity: d.n ? 1 : 0.4,
-                  outline: d.n === todayNum ? "1.5px solid var(--ink)" : "none",
-                }}
-              >
-                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--ink-muted)", paddingLeft: 4 }}>{d.n || ""}</div>
-                {d.mark && (
-                  <Link
-                    to={`/hearings/${d.caseId}`}
-                    style={{
-                      padding: "5px 7px",
-                      borderRadius: 8,
-                      background: "var(--surface-alt)",
-                      borderLeft: "3px solid var(--dot-amber)",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 1,
-                      color: "inherit",
-                    }}
-                  >
-                    <div style={{ fontSize: 11, fontWeight: 700, lineHeight: 1.2, wordBreak: "break-word" }}>{d.mark}</div>
-                    <div style={{ fontSize: 11, lineHeight: 1.2, color: "var(--muted-2)" }}>{d.time}</div>
-                  </Link>
-                )}
-              </div>
-            ))}
+            {calendar?.days.map((d, i) => {
+              const isSelected = d.n && d.date === selectedDate;
+              return (
+                <div
+                  key={i}
+                  className="card"
+                  role={d.n ? "button" : undefined}
+                  tabIndex={d.n ? 0 : undefined}
+                  onClick={() => d.n && setSelectedDate((cur) => (cur === d.date ? null : d.date))}
+                  onKeyDown={(e) => {
+                    if (d.n && (e.key === "Enter" || e.key === " ")) {
+                      e.preventDefault();
+                      setSelectedDate((cur) => (cur === d.date ? null : d.date));
+                    }
+                  }}
+                  style={{
+                    padding: "8px 6px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 6,
+                    overflow: "hidden",
+                    opacity: d.n ? 1 : 0.4,
+                    cursor: d.n ? "pointer" : "default",
+                    background: isSelected ? "var(--ink)" : "var(--surface)",
+                    outline: d.n === todayNum ? "1.5px solid var(--ink)" : "none",
+                    outlineOffset: -1.5,
+                  }}
+                >
+                  <div style={{ fontSize: 14, fontWeight: 600, color: isSelected ? "var(--surface)" : "var(--ink-muted)", paddingLeft: 4 }}>
+                    {d.n || ""}
+                  </div>
+                  {d.mark && (
+                    <Link
+                      to={`/hearings/${d.caseId}`}
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        padding: "5px 7px",
+                        borderRadius: 8,
+                        background: isSelected ? "rgba(252,250,244,.14)" : "var(--surface-alt)",
+                        borderLeft: "3px solid var(--dot-amber)",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1,
+                        color: isSelected ? "var(--surface)" : "inherit",
+                      }}
+                    >
+                      <div style={{ fontSize: 11, fontWeight: 700, lineHeight: 1.2, wordBreak: "break-word" }}>{d.mark}</div>
+                      <div style={{ fontSize: 11, lineHeight: 1.2, color: isSelected ? "#cfc7b6" : "var(--muted-2)" }}>{d.time}</div>
+                    </Link>
+                  )}
+                  {d.moreCount > 0 && (
+                    <div style={{ fontSize: 10, color: isSelected ? "#cfc7b6" : "var(--muted)", paddingLeft: 4 }}>
+                      +{d.moreCount} more
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
         <div style={{ width: 330, flex: "none", borderLeft: "1px solid var(--border)", background: "var(--surface)", padding: "28px 26px", display: "flex", flexDirection: "column", gap: 18, overflow: "auto" }}>
-          <div className="label">Next seven days</div>
-          {upcoming.upcoming.length === 0 && <div style={{ fontSize: 14, color: "var(--muted-2)" }}>Nothing scheduled this week.</div>}
-          {upcoming.upcoming.map((u) => {
-            const { dd, mon } = formatDayMonth(u.next_hearing_date);
-            return (
-              <Link
-                key={u.id}
-                to={`/hearings/${u.id}`}
-                style={{ display: "flex", gap: 14, alignItems: "flex-start", paddingBottom: 16, borderBottom: "1px solid var(--surface-alt)", color: "inherit" }}
-              >
-                <div style={{ width: 52, flex: "none", textAlign: "center" }}>
-                  <div className="heading-font" style={{ fontSize: 24, fontWeight: 700, lineHeight: 1 }}>{dd}</div>
-                  <div style={{ fontSize: 12, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--muted)", fontWeight: 600 }}>{mon}</div>
-                </div>
-                <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
-                  <div style={{ fontSize: 16, fontWeight: 600 }}>{u.case_number}</div>
-                  <div style={{ fontSize: 14, color: "var(--muted-2)" }}>{u.next_hearing_note || "Hearing"}</div>
-                  <div style={{ fontSize: 13, color: "var(--muted)" }}>{[u.court_establishment, u.coram].filter(Boolean).join(" · ")}</div>
-                </div>
-              </Link>
-            );
-          })}
+          {!selectedDay ? (
+            <>
+              <div className="label">Selected date</div>
+              <div style={{ fontSize: 15, color: "var(--muted-2)" }}>Select a date to view the cases listed.</div>
+            </>
+          ) : (
+            <>
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <div className="label">Selected date</div>
+                <div className="heading-font" style={{ fontSize: 20, fontWeight: 700 }}>{formatLong(selectedDay.date)}</div>
+              </div>
+              {selectedDay.hearings.length === 0 && (
+                <div style={{ fontSize: 15, color: "var(--muted-2)" }}>No cases listed for this date.</div>
+              )}
+              {selectedDay.hearings.map((h) => (
+                <Link
+                  key={h.id}
+                  to={`/hearings/${h.id}`}
+                  style={{ display: "flex", flexDirection: "column", gap: 3, paddingBottom: 16, borderBottom: "1px solid var(--surface-alt)", color: "inherit" }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                    <div style={{ fontSize: 16, fontWeight: 600 }}>{h.case_number}</div>
+                    {h.next_hearing_time && <div style={{ fontSize: 13, color: "var(--muted)", flex: "none" }}>{h.next_hearing_time}</div>}
+                  </div>
+                  <div style={{ fontSize: 14, color: "var(--muted-2)" }}>{h.next_hearing_note || "Hearing"}</div>
+                  <div style={{ fontSize: 13, color: "var(--muted)" }}>{[h.court_establishment, h.coram].filter(Boolean).join(" · ")}</div>
+                </Link>
+              ))}
+              <div style={{ fontSize: 13, color: "var(--muted)" }}>{relativeLabel(selectedDay.date)}</div>
+            </>
+          )}
 
-          {upcoming.needsDates.length > 0 && (
+          {needsDates.length > 0 && (
             <div style={{ marginTop: "auto", padding: 18, borderRadius: 18, background: "var(--surface-alt)", display: "flex", flexDirection: "column", gap: 6 }}>
               <div style={{ fontSize: 15, fontWeight: 600 }}>
-                {upcoming.needsDates.length === 1 ? "One matter needs a date" : `${upcoming.needsDates.length} matters need dates`}
+                {needsDates.length === 1 ? "One matter needs a date" : `${needsDates.length} matters need dates`}
               </div>
               <div style={{ fontSize: 14, color: "var(--muted-2)" }}>
-                Next hearing not recorded for {upcoming.needsDates.join(" and ")}.
+                Next hearing not recorded for {needsDates.join(" and ")}.
               </div>
             </div>
           )}
