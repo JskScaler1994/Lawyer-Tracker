@@ -6,7 +6,15 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-export const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+const isLocal = /localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL);
+
+export const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
+  // Supabase (and most hosted Postgres) require TLS; rejectUnauthorized is
+  // off because these providers use certs not in Node's default trust
+  // store, not because the connection itself is unencrypted.
+  ssl: isLocal ? false : { rejectUnauthorized: false },
+});
 
 export async function initDb() {
   await pool.query(`

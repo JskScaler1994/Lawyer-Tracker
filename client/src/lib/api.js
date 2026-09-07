@@ -1,10 +1,26 @@
 const BASE = import.meta.env.VITE_API_URL || "http://localhost:4000";
+const TOKEN_KEY = "prasanna:auth_token";
+
+export const auth = {
+  getToken: () => localStorage.getItem(TOKEN_KEY),
+  setToken: (token) => localStorage.setItem(TOKEN_KEY, token),
+  clearToken: () => localStorage.removeItem(TOKEN_KEY),
+};
 
 async function request(path, options) {
+  const token = auth.getToken();
   const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     ...options,
   });
+  if (res.status === 401 && path !== "/api/login") {
+    auth.clearToken();
+    window.location.href = "/login";
+    return new Promise(() => {}); // navigation is happening; stop this call from resolving
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || `Request failed: ${res.status}`);
@@ -14,6 +30,7 @@ async function request(path, options) {
 }
 
 export const api = {
+  login: (password) => request("/api/login", { method: "POST", body: JSON.stringify({ password }) }),
   listCases: () => request("/api/cases"),
   getCase: (id) => request(`/api/cases/${id}`),
   createCase: (data) => request("/api/cases", { method: "POST", body: JSON.stringify(data) }),

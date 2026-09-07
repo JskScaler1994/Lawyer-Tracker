@@ -1,4 +1,5 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { auth } from "../lib/api";
 
 const NAV_ITEMS = [
   { label: "Add case", to: "/cases/new", match: (path) => path.startsWith("/cases") },
@@ -9,6 +10,7 @@ const NAV_ITEMS = [
 
 export function Sidebar({ children }) {
   const location = useLocation();
+  const navigate = useNavigate();
 
   return (
     <div
@@ -57,6 +59,25 @@ export function Sidebar({ children }) {
       </nav>
 
       {children}
+
+      <button
+        onClick={() => {
+          auth.clearToken();
+          navigate("/login", { replace: true });
+        }}
+        style={{
+          marginTop: "auto",
+          background: "none",
+          border: "none",
+          padding: "12px 14px",
+          textAlign: "left",
+          fontSize: 15,
+          color: "var(--muted)",
+          cursor: "pointer",
+        }}
+      >
+        Log out
+      </button>
     </div>
   );
 }
