@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Sidebar } from "../components/Sidebar.jsx";
 import { Field, TextInput, DateInput } from "../components/Field.jsx";
@@ -24,11 +24,25 @@ export function CaseDetailPage() {
   const [hearingActionError, setHearingActionError] = useState(null);
   const [hearingActionBusy, setHearingActionBusy] = useState(false);
 
+  const latestRequestId = useRef(0);
+
   const load = useCallback(() => {
-    api.getCase(id).then(setCaseData).catch((e) => setError(e.message));
+    const requestId = ++latestRequestId.current;
+    api.getCase(id)
+      .then((data) => {
+        if (latestRequestId.current === requestId) setCaseData(data);
+      })
+      .catch((e) => {
+        if (latestRequestId.current === requestId) setError(e.message);
+      });
   }, [id]);
 
   useEffect(() => {
+    // A previous case's data must never linger while the next one loads —
+    // that's what let an old page's hearing IDs be edited against a new
+    // case's ID if an earlier fetch resolved after a later one.
+    setCaseData(null);
+    setError(null);
     load();
   }, [load]);
 
