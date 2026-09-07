@@ -35,6 +35,13 @@ const insertHearingStmt = db.prepare(`
   INSERT INTO hearings (case_id, hearing_date, title, note) VALUES (?, ?, ?, ?)
 `);
 
+const getHearingStmt = db.prepare(`
+  SELECT * FROM hearings WHERE id = ? AND case_id = ?
+`);
+
+const deleteCaseStmt = db.prepare(`DELETE FROM cases WHERE id = ?`);
+const deleteHearingStmt = db.prepare(`DELETE FROM hearings WHERE id = ? AND case_id = ?`);
+
 function normalizeCaseInput(body) {
   return {
     case_number: String(body.case_number || "").trim(),
@@ -104,6 +111,40 @@ casesRouter.patch("/:id", (req, res) => {
   const setClause = Object.keys(updates).map((k) => `${k} = @${k}`).join(", ");
   db.prepare(`UPDATE cases SET ${setClause} WHERE id = @id`).run({ ...updates, id: req.params.id });
   res.json(getStmt.get(req.params.id));
+});
+
+casesRouter.delete("/:id", (req, res) => {
+  const existing = getStmt.get(req.params.id);
+  if (!existing) return res.status(404).json({ error: "Case not found" });
+  deleteCaseStmt.run(req.params.id);
+  res.status(204).end();
+});
+
+casesRouter.patch("/:id/hearings/:hearingId", (req, res) => {
+  const existing = getHearingStmt.get(req.params.hearingId, req.params.id);
+  if (!existing) return res.status(404).json({ error: "Hearing not found" });
+
+  const fields = ["hearing_date", "title", "note"];
+  const updates = {};
+  for (const f of fields) {
+    if (f in req.body) updates[f] = req.body[f];
+  }
+  if (updates.title !== undefined && !String(updates.title).trim()) {
+    return res.status(400).json({ error: "title is required" });
+  }
+  if (Object.keys(updates).length === 0) {
+    return res.json(existing);
+  }
+  const setClause = Object.keys(updates).map((k) => `${k} = @${k}`).join(", ");
+  db.prepare(`UPDATE hearings SET ${setClause} WHERE id = @id`).run({ ...updates, id: req.params.hearingId });
+  res.json(getHearingStmt.get(req.params.hearingId, req.params.id));
+});
+
+casesRouter.delete("/:id/hearings/:hearingId", (req, res) => {
+  const existing = getHearingStmt.get(req.params.hearingId, req.params.id);
+  if (!existing) return res.status(404).json({ error: "Hearing not found" });
+  deleteHearingStmt.run(req.params.hearingId, req.params.id);
+  res.status(204).end();
 });
 
 casesRouter.post("/:id/hearings", (req, res) => {

@@ -1,16 +1,28 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { Sidebar } from "../components/Sidebar.jsx";
 import { Field, TextInput, DateInput } from "../components/Field.jsx";
+import { Toggle } from "../components/Toggle.jsx";
+import { ConfirmDialog } from "../components/ConfirmDialog.jsx";
+import { EditIcon, TrashIcon } from "../components/icons.jsx";
 import { api } from "../lib/api";
 import { dayName, formatShort, relativeLabel } from "../lib/dates";
 import { statusPillColors } from "../lib/status";
 
 export function CaseDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [caseData, setCaseData] = useState(null);
   const [error, setError] = useState(null);
   const [showAddHearing, setShowAddHearing] = useState(false);
+  const [showEditCase, setShowEditCase] = useState(false);
+  const [showDeleteCase, setShowDeleteCase] = useState(false);
+  const [deleteCaseError, setDeleteCaseError] = useState(null);
+  const [deletingCase, setDeletingCase] = useState(false);
+  const [editingHearing, setEditingHearing] = useState(null);
+  const [deletingHearing, setDeletingHearing] = useState(null);
+  const [hearingActionError, setHearingActionError] = useState(null);
+  const [hearingActionBusy, setHearingActionBusy] = useState(false);
 
   const load = useCallback(() => {
     api.getCase(id).then(setCaseData).catch((e) => setError(e.message));
@@ -19,6 +31,33 @@ export function CaseDetailPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  async function confirmDeleteCase() {
+    setDeletingCase(true);
+    setDeleteCaseError(null);
+    try {
+      await api.deleteCase(id);
+      navigate("/hearings");
+    } catch (e) {
+      setDeleteCaseError(e.message);
+    } finally {
+      setDeletingCase(false);
+    }
+  }
+
+  async function confirmDeleteHearing() {
+    setHearingActionBusy(true);
+    setHearingActionError(null);
+    try {
+      await api.deleteHearing(id, deletingHearing.id);
+      setDeletingHearing(null);
+      load();
+    } catch (e) {
+      setHearingActionError(e.message);
+    } finally {
+      setHearingActionBusy(false);
+    }
+  }
 
   if (error) {
     return (
@@ -61,6 +100,14 @@ export function CaseDetailPage() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flex: "none" }}>
             <div className="pill" style={{ background: pill.bg, color: pill.fg }}>{caseData.status}</div>
+            <button className="btn btn-secondary" onClick={() => setShowEditCase(true)}>Edit</button>
+            <button
+              className="btn btn-secondary"
+              style={{ color: "var(--dot-red)", borderColor: "var(--dot-red)" }}
+              onClick={() => setShowDeleteCase(true)}
+            >
+              Delete
+            </button>
             <button className="btn btn-primary" onClick={() => setShowAddHearing(true)}>Add hearing</button>
           </div>
         </div>
@@ -109,6 +156,22 @@ export function CaseDetailPage() {
                   <div style={{ fontSize: 17, fontWeight: 600 }}>{h.title}</div>
                   {h.note && <div style={{ fontSize: 15, color: "var(--muted-2)" }}>{h.note}</div>}
                 </div>
+                <div style={{ display: "flex", gap: 6, flex: "none" }}>
+                  <button
+                    aria-label="Edit hearing"
+                    onClick={() => setEditingHearing(h)}
+                    style={{ background: "none", border: "none", padding: 6, borderRadius: 8, color: "var(--muted)", cursor: "pointer", display: "flex" }}
+                  >
+                    <EditIcon />
+                  </button>
+                  <button
+                    aria-label="Delete hearing"
+                    onClick={() => setDeletingHearing(h)}
+                    style={{ background: "none", border: "none", padding: 6, borderRadius: 8, color: "var(--muted)", cursor: "pointer", display: "flex" }}
+                  >
+                    <TrashIcon />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -123,6 +186,59 @@ export function CaseDetailPage() {
             setShowAddHearing(false);
             load();
           }}
+        />
+      )}
+
+      {showEditCase && (
+        <EditCaseModal
+          caseData={caseData}
+          onClose={() => setShowEditCase(false)}
+          onSaved={() => {
+            setShowEditCase(false);
+            load();
+          }}
+        />
+      )}
+
+      {showDeleteCase && (
+        <ConfirmDialog
+          title="Delete this case?"
+          message={`Delete ${caseData.case_number} and its ${caseData.hearing_count} hearing${caseData.hearing_count === 1 ? "" : "s"}? This can't be undone.`}
+          confirmLabel="Delete case"
+          confirming={deletingCase}
+          error={deleteCaseError}
+          onCancel={() => {
+            setShowDeleteCase(false);
+            setDeleteCaseError(null);
+          }}
+          onConfirm={confirmDeleteCase}
+        />
+      )}
+
+      {editingHearing && (
+        <EditHearingModal
+          caseId={id}
+          hearing={editingHearing}
+          onClose={() => setEditingHearing(null)}
+          onSaved={() => {
+            setEditingHearing(null);
+            load();
+          }}
+        />
+      )}
+
+      {deletingHearing && (
+        <ConfirmDialog
+          title="Delete this hearing?"
+          message={`Delete the ${formatShort(deletingHearing.hearing_date)} entry "${deletingHearing.title}"? This can't be undone.`}
+          confirmLabel="Delete hearing"
+          confirming={hearingActionBusy}
+          error={hearingActionError}
+          onCancel={() => {
+            setDeletingHearing(null);
+            setHearingActionError(null);
+          }}
+          onConfirm={confirmDeleteHearing}
         />
       )}
     </div>
@@ -194,6 +310,168 @@ function AddHearingModal({ caseData, onClose, onSaved }) {
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
           <button className="btn btn-primary" disabled={!hearingDate || !title.trim() || saving} onClick={submit}>
             {saving ? "Saving…" : "Save hearing"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EditHearingModal({ caseId, hearing, onClose, onSaved }) {
+  const [hearingDate, setHearingDate] = useState(hearing.hearing_date);
+  const [title, setTitle] = useState(hearing.title);
+  const [note, setNote] = useState(hearing.note || "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function submit() {
+    if (!hearingDate || !title.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await api.updateHearing(caseId, hearing.id, {
+        hearing_date: hearingDate,
+        title: title.trim(),
+        note: note.trim() || null,
+      });
+      onSaved();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      style={{ position: "fixed", inset: 0, background: "rgba(27,25,21,.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, zIndex: 10 }}
+      onClick={onClose}
+    >
+      <div className="card" style={{ background: "var(--surface)", padding: 28, width: "100%", maxWidth: 480, display: "flex", flexDirection: "column", gap: 18, maxHeight: "90vh", overflow: "auto" }} onClick={(e) => e.stopPropagation()}>
+        <div className="heading-font" style={{ fontSize: 22, fontWeight: 700 }}>Edit hearing</div>
+
+        <Field label="Hearing date">
+          <DateInput value={hearingDate} onChange={setHearingDate} />
+        </Field>
+        <Field label="What happened">
+          <TextInput value={title} onChange={setTitle} placeholder="e.g. Adjourned for evidence" />
+        </Field>
+        <Field label="Note (optional)">
+          <TextInput value={note} onChange={setNote} placeholder="Additional detail" />
+        </Field>
+
+        {error && <div style={{ color: "var(--dot-red)", fontSize: 14 }}>{error}</div>}
+
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" disabled={!hearingDate || !title.trim() || saving} onClick={submit}>
+            {saving ? "Saving…" : "Save changes"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EditCaseModal({ caseData, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    case_number: caseData.case_number || "",
+    cnr: caseData.cnr || "",
+    status: caseData.status || "",
+    court_establishment: caseData.court_establishment || "",
+    place: caseData.place || "",
+    coram: caseData.coram || "",
+    filed_date: caseData.filed_date || "",
+    next_hearing_date: caseData.next_hearing_date || "",
+    next_hearing_time: caseData.next_hearing_time || "",
+    next_hearing_note: caseData.next_hearing_note || "",
+    reminder_enabled: !!caseData.reminder_enabled,
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  function set(field, value) {
+    setForm((f) => ({ ...f, [field]: value }));
+  }
+
+  const canSave = form.case_number.trim() && form.status.trim();
+
+  async function submit() {
+    if (!canSave) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await api.updateCase(caseData.id, {
+        case_number: form.case_number.trim(),
+        cnr: form.cnr.trim() || null,
+        status: form.status.trim(),
+        court_establishment: form.court_establishment.trim() || null,
+        place: form.place.trim() || null,
+        coram: form.coram.trim() || null,
+        filed_date: form.filed_date || null,
+        next_hearing_date: form.next_hearing_date || null,
+        next_hearing_time: form.next_hearing_time || null,
+        next_hearing_note: form.next_hearing_note || null,
+        reminder_enabled: form.reminder_enabled,
+      });
+      onSaved();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      style={{ position: "fixed", inset: 0, background: "rgba(27,25,21,.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, zIndex: 10 }}
+      onClick={onClose}
+    >
+      <div className="card" style={{ background: "var(--surface)", padding: 28, width: "100%", maxWidth: 520, display: "flex", flexDirection: "column", gap: 18, maxHeight: "90vh", overflow: "auto" }} onClick={(e) => e.stopPropagation()}>
+        <div className="heading-font" style={{ fontSize: 22, fontWeight: 700 }}>Edit case</div>
+
+        <Field label="Case number">
+          <TextInput value={form.case_number} onChange={(v) => set("case_number", v)} />
+        </Field>
+        <Field label="CNR">
+          <TextInput value={form.cnr} onChange={(v) => set("cnr", v)} placeholder="Optional" />
+        </Field>
+        <Field label="Case status">
+          <TextInput value={form.status} onChange={(v) => set("status", v)} />
+        </Field>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <Field label="Court establishment">
+            <TextInput value={form.court_establishment} onChange={(v) => set("court_establishment", v)} />
+          </Field>
+          <Field label="Place">
+            <TextInput value={form.place} onChange={(v) => set("place", v)} />
+          </Field>
+        </div>
+        <Field label="Coram / bench">
+          <TextInput value={form.coram} onChange={(v) => set("coram", v)} placeholder="Optional" />
+        </Field>
+        <Field label="Filed date">
+          <DateInput value={form.filed_date} onChange={(v) => set("filed_date", v)} />
+        </Field>
+
+        <div style={{ height: 1, background: "var(--border)" }} />
+        <div className="label">Next hearing</div>
+        <Field label="Next hearing date">
+          <DateInput value={form.next_hearing_date} onChange={(v) => set("next_hearing_date", v)} />
+        </Field>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <TextInput value={form.next_hearing_time} onChange={(v) => set("next_hearing_time", v)} placeholder="10:00 am" />
+          <TextInput value={form.next_hearing_note} onChange={(v) => set("next_hearing_note", v)} placeholder="What's expected" />
+        </div>
+
+        <Toggle checked={form.reminder_enabled} onChange={(v) => set("reminder_enabled", v)} label="Remind me two days before the next hearing" />
+
+        {error && <div style={{ color: "var(--dot-red)", fontSize: 14 }}>{error}</div>}
+
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" disabled={!canSave || saving} onClick={submit}>
+            {saving ? "Saving…" : "Save changes"}
           </button>
         </div>
       </div>
