@@ -93,6 +93,14 @@ textarea {
   font-weight: 600;
 }
 
+/* Windows/Chrome "forced colors" (high-contrast) mode repaints anything with
+   button semantics using its own palette, ignoring our CSS. Buttons and
+   button-role cards use a deliberate custom palette, so opt them out. */
+.btn,
+.card[role="button"] {
+  forced-color-adjust: none;
+}
+
 .btn {
   border-radius: 12px;
   padding: 12px 20px;
