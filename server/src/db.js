@@ -23,6 +23,9 @@ db.exec(`
     next_hearing_time TEXT,
     next_hearing_note TEXT,
     reminder_enabled INTEGER NOT NULL DEFAULT 1,
+    client_name TEXT,
+    client_phone TEXT,
+    appearing_for TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
@@ -38,3 +41,11 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_hearings_case_id ON hearings(case_id);
   CREATE INDEX IF NOT EXISTS idx_cases_next_hearing ON cases(next_hearing_date);
 `);
+
+// Migration for databases created before client fields existed.
+const existingColumns = new Set(db.prepare("PRAGMA table_info(cases)").all().map((c) => c.name));
+for (const column of ["client_name", "client_phone", "appearing_for"]) {
+  if (!existingColumns.has(column)) {
+    db.exec(`ALTER TABLE cases ADD COLUMN ${column} TEXT`);
+  }
+}

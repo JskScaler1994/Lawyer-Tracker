@@ -87,6 +87,19 @@ export function NewCaseWide({ form: f, set, canSave, saving, error, savedAt, sav
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+              <Field label="Client name">
+                <TextInput value={f.clientName} onChange={(v) => set("clientName", v)} placeholder="Rakesh Malhotra" />
+              </Field>
+              <Field label="Client phone">
+                <TextInput value={f.clientPhone} onChange={(v) => set("clientPhone", v)} placeholder="+91 98110 22334" />
+              </Field>
+            </div>
+
+            <Field label="Appearing for">
+              <TextInput value={f.appearingFor} onChange={(v) => set("appearingFor", v)} placeholder="Plaintiff, Defendant, Petitioner…" />
+            </Field>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
               <Field label="Last hearing date" hint={f.lastHearingNote}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <DateInput value={f.lastHearingDate} onChange={(v) => set("lastHearingDate", v)} style={{ flex: 1 }} />

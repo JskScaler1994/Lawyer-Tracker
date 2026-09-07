@@ -111,6 +111,15 @@ export function CaseDetailPage() {
             <div style={{ fontSize: 15, color: "var(--muted-2)" }}>
               {[caseData.cnr && `CNR ${caseData.cnr}`, caseData.coram && `Before ${caseData.coram}`].filter(Boolean).join(" · ")}
             </div>
+            {(caseData.client_name || caseData.client_phone) && (
+              <div style={{ fontSize: 15, color: "var(--muted-2)" }}>
+                {[
+                  caseData.client_name,
+                  caseData.client_phone,
+                  caseData.appearing_for && `Appearing for ${caseData.appearing_for}`,
+                ].filter(Boolean).join(" · ")}
+              </div>
+            )}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flex: "none" }}>
             <div className="pill" style={{ background: pill.bg, color: pill.fg }}>{caseData.status}</div>
@@ -396,6 +405,9 @@ function EditCaseModal({ caseData, onClose, onSaved }) {
     place: caseData.place || "",
     coram: caseData.coram || "",
     filed_date: caseData.filed_date || "",
+    client_name: caseData.client_name || "",
+    client_phone: caseData.client_phone || "",
+    appearing_for: caseData.appearing_for || "",
     next_hearing_date: caseData.next_hearing_date || "",
     next_hearing_time: caseData.next_hearing_time || "",
     next_hearing_note: caseData.next_hearing_note || "",
@@ -423,6 +435,9 @@ function EditCaseModal({ caseData, onClose, onSaved }) {
         place: form.place.trim() || null,
         coram: form.coram.trim() || null,
         filed_date: form.filed_date || null,
+        client_name: form.client_name.trim() || null,
+        client_phone: form.client_phone.trim() || null,
+        appearing_for: form.appearing_for.trim() || null,
         next_hearing_date: form.next_hearing_date || null,
         next_hearing_time: form.next_hearing_time || null,
         next_hearing_note: form.next_hearing_note || null,
@@ -466,6 +481,20 @@ function EditCaseModal({ caseData, onClose, onSaved }) {
         </Field>
         <Field label="Filed date">
           <DateInput value={form.filed_date} onChange={(v) => set("filed_date", v)} />
+        </Field>
+
+        <div style={{ height: 1, background: "var(--border)" }} />
+        <div className="label">Client</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <Field label="Client name">
+            <TextInput value={form.client_name} onChange={(v) => set("client_name", v)} placeholder="Optional" />
+          </Field>
+          <Field label="Client phone">
+            <TextInput value={form.client_phone} onChange={(v) => set("client_phone", v)} placeholder="Optional" />
+          </Field>
+        </div>
+        <Field label="Appearing for">
+          <TextInput value={form.appearing_for} onChange={(v) => set("appearing_for", v)} placeholder="Plaintiff, Defendant, Petitioner…" />
         </Field>
 
         <div style={{ height: 1, background: "var(--border)" }} />

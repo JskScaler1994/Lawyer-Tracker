@@ -11,9 +11,11 @@ const today = todayISO();
 
 const insertCase = db.prepare(`
   INSERT INTO cases (case_number, cnr, status, court_establishment, place, coram, filed_date,
-    next_hearing_date, next_hearing_time, next_hearing_note, reminder_enabled)
+    next_hearing_date, next_hearing_time, next_hearing_note, reminder_enabled,
+    client_name, client_phone, appearing_for)
   VALUES (@case_number, @cnr, @status, @court_establishment, @place, @coram, @filed_date,
-    @next_hearing_date, @next_hearing_time, @next_hearing_note, @reminder_enabled)
+    @next_hearing_date, @next_hearing_time, @next_hearing_note, @reminder_enabled,
+    @client_name, @client_phone, @appearing_for)
 `);
 const insertHearing = db.prepare(`
   INSERT INTO hearings (case_id, hearing_date, title, note) VALUES (?, ?, ?, ?)
@@ -33,6 +35,9 @@ const seedData = [
       next_hearing_time: "10:00 am",
       next_hearing_note: "Cross-examination of PW-2",
       reminder_enabled: 1,
+      client_name: "Rakesh Malhotra",
+      client_phone: "+91 98110 22334",
+      appearing_for: "Plaintiff",
     },
     hearings: [
       ["2026-08-14", "Adjourned for evidence", "PW-2 not present. Court granted last opportunity."],
@@ -55,6 +60,9 @@ const seedData = [
       next_hearing_time: null,
       next_hearing_note: null,
       reminder_enabled: 1,
+      client_name: "Sunita Kapoor",
+      client_phone: "+91 98730 44556",
+      appearing_for: "Defendant",
     },
     hearings: [
       ["2026-07-30", "Adjourned", "Listed for framing of issues."],
@@ -73,6 +81,9 @@ const seedData = [
       next_hearing_time: "11:00 am",
       next_hearing_note: "Arguments on bail",
       reminder_enabled: 1,
+      client_name: "Vikram Singh",
+      client_phone: "+91 99100 77889",
+      appearing_for: "Accused",
     },
     hearings: [
       ["2026-08-20", "Bail application filed", "Notice issued to State, reply sought."],
@@ -91,6 +102,9 @@ const seedData = [
       next_hearing_time: null,
       next_hearing_note: null,
       reminder_enabled: 0,
+      client_name: "Anita Desai",
+      client_phone: "+91 98200 33221",
+      appearing_for: "Petitioner",
     },
     hearings: [
       ["2026-08-02", "Disposed", "Petition disposed of with directions to respondent."],
@@ -109,6 +123,9 @@ const seedData = [
       next_hearing_time: null,
       next_hearing_note: null,
       reminder_enabled: 1,
+      client_name: "Rakesh Malhotra",
+      client_phone: "+91 98110 22334",
+      appearing_for: "Petitioner",
     },
     hearings: [
       ["2026-08-25", "Admission hearing held", "Arguments heard; order reserved."],

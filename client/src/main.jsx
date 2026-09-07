@@ -7,6 +7,7 @@ import { CaseDetailPage } from "./pages/CaseDetailPage.jsx";
 import { CalendarPage } from "./pages/CalendarPage.jsx";
 import { HearingsCasePicker } from "./pages/HearingsCasePicker.jsx";
 import { LegacyCaseRedirect } from "./pages/LegacyCaseRedirect.jsx";
+import { ClientsPage } from "./pages/ClientsPage.jsx";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
@@ -18,6 +19,7 @@ createRoot(document.getElementById("root")).render(
         <Route path="/hearings" element={<HearingsCasePicker />} />
         <Route path="/hearings/:id" element={<CaseDetailPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
+        <Route path="/clients" element={<ClientsPage />} />
         <Route path="*" element={<Navigate to="/cases/new" replace />} />
       </Routes>
     </BrowserRouter>

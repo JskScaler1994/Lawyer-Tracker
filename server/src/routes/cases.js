@@ -26,9 +26,11 @@ const hearingsStmt = db.prepare(`
 
 const insertCaseStmt = db.prepare(`
   INSERT INTO cases (case_number, cnr, status, court_establishment, place, coram, filed_date,
-    next_hearing_date, next_hearing_time, next_hearing_note, reminder_enabled)
+    next_hearing_date, next_hearing_time, next_hearing_note, reminder_enabled,
+    client_name, client_phone, appearing_for)
   VALUES (@case_number, @cnr, @status, @court_establishment, @place, @coram, @filed_date,
-    @next_hearing_date, @next_hearing_time, @next_hearing_note, @reminder_enabled)
+    @next_hearing_date, @next_hearing_time, @next_hearing_note, @reminder_enabled,
+    @client_name, @client_phone, @appearing_for)
 `);
 
 const insertHearingStmt = db.prepare(`
@@ -55,6 +57,9 @@ function normalizeCaseInput(body) {
     next_hearing_time: body.next_hearing_time || null,
     next_hearing_note: body.next_hearing_note || null,
     reminder_enabled: body.reminder_enabled ? 1 : 0,
+    client_name: body.client_name ? String(body.client_name).trim() : null,
+    client_phone: body.client_phone ? String(body.client_phone).trim() : null,
+    appearing_for: body.appearing_for ? String(body.appearing_for).trim() : null,
   };
 }
 
@@ -97,6 +102,7 @@ casesRouter.patch("/:id", (req, res) => {
   const fields = [
     "case_number", "cnr", "status", "court_establishment", "place", "coram",
     "filed_date", "next_hearing_date", "next_hearing_time", "next_hearing_note",
+    "client_name", "client_phone", "appearing_for",
   ];
   const updates = {};
   for (const f of fields) {
