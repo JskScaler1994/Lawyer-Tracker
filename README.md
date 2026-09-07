@@ -10,16 +10,27 @@ conversation and `project/` for the exported prototype it was built from.
 - `client/` — React (Vite) frontend, iPad-first but responsive down to phone
   widths. The "New case" screen renders a wide two-column layout (with a live
   record preview) above ~900px, and a single-column mobile layout below it.
-- `server/` — Express API backed by SQLite (`better-sqlite3`), no external
-  database to install.
+- `server/` — Express API backed by Postgres (via `pg`).
 
 ## Running it
 
-In two terminals:
+You need a Postgres database. Easiest option, using the included Docker
+Compose file:
+
+```sh
+docker compose up -d
+```
+
+That starts Postgres on `localhost:5432` with a database matching the
+example env file below. If you'd rather use a hosted Postgres (Neon,
+Supabase, Railway, etc.), just point `DATABASE_URL` at that instead.
+
+Then, in two terminals:
 
 ```sh
 # API — http://localhost:4000
 cd server
+cp .env.example .env   # first time only — edit DATABASE_URL if not using Docker Compose
 npm install
 npm run seed   # first time only, seeds a few sample cases
 npm start

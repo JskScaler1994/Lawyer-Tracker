@@ -1,25 +1,17 @@
-import { db } from "./db.js";
+import "dotenv/config";
+import { pool, initDb } from "./db.js";
 import { todayISO, addDaysISO } from "./dates.js";
 
-const count = db.prepare("SELECT COUNT(*) AS n FROM cases").get().n;
-if (count > 0) {
-  console.log(`Seed skipped — ${count} case(s) already in the database.`);
+await initDb();
+
+const { rows } = await pool.query("SELECT COUNT(*)::int AS n FROM cases");
+if (rows[0].n > 0) {
+  console.log(`Seed skipped — ${rows[0].n} case(s) already in the database.`);
+  await pool.end();
   process.exit(0);
 }
 
 const today = todayISO();
-
-const insertCase = db.prepare(`
-  INSERT INTO cases (case_number, cnr, status, court_establishment, place, coram, filed_date,
-    next_hearing_date, next_hearing_time, next_hearing_note, reminder_enabled,
-    client_name, client_phone, appearing_for)
-  VALUES (@case_number, @cnr, @status, @court_establishment, @place, @coram, @filed_date,
-    @next_hearing_date, @next_hearing_time, @next_hearing_note, @reminder_enabled,
-    @client_name, @client_phone, @appearing_for)
-`);
-const insertHearing = db.prepare(`
-  INSERT INTO hearings (case_id, hearing_date, title, note) VALUES (?, ?, ?, ?)
-`);
 
 const seedData = [
   {
@@ -133,14 +125,37 @@ const seedData = [
   },
 ];
 
-const insertAll = db.transaction(() => {
+const client = await pool.connect();
+try {
+  await client.query("BEGIN");
   for (const { case: c, hearings } of seedData) {
-    const { lastInsertRowid } = insertCase.run(c);
+    const insertResult = await client.query(
+      `INSERT INTO cases (case_number, cnr, status, court_establishment, place, coram, filed_date,
+        next_hearing_date, next_hearing_time, next_hearing_note, reminder_enabled,
+        client_name, client_phone, appearing_for)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      RETURNING id`,
+      [
+        c.case_number, c.cnr, c.status, c.court_establishment, c.place, c.coram, c.filed_date,
+        c.next_hearing_date, c.next_hearing_time, c.next_hearing_note, c.reminder_enabled,
+        c.client_name, c.client_phone, c.appearing_for,
+      ]
+    );
+    const caseId = insertResult.rows[0].id;
     for (const [hearing_date, title, note] of hearings) {
-      insertHearing.run(lastInsertRowid, hearing_date, title, note);
+      await client.query(
+        "INSERT INTO hearings (case_id, hearing_date, title, note) VALUES ($1, $2, $3, $4)",
+        [caseId, hearing_date, title, note]
+      );
     }
   }
-});
+  await client.query("COMMIT");
+} catch (e) {
+  await client.query("ROLLBACK");
+  throw e;
+} finally {
+  client.release();
+}
 
-insertAll();
 console.log(`Seeded ${seedData.length} cases.`);
+await pool.end();

@@ -1,48 +1,36 @@
 import { Router } from "express";
-import { db } from "../db.js";
+import { pool } from "../db.js";
 
 export const casesRouter = Router();
 
-const listStmt = db.prepare(`
+const LIST_SELECT = `
   SELECT c.*,
     (SELECT hearing_date FROM hearings h WHERE h.case_id = c.id ORDER BY h.hearing_date DESC LIMIT 1) AS last_hearing_date,
     (SELECT title FROM hearings h WHERE h.case_id = c.id ORDER BY h.hearing_date DESC LIMIT 1) AS last_hearing_title,
-    (SELECT COUNT(*) FROM hearings h WHERE h.case_id = c.id) AS hearing_count
+    (SELECT COUNT(*)::int FROM hearings h WHERE h.case_id = c.id) AS hearing_count
   FROM cases c
-  ORDER BY c.created_at DESC
-`);
+`;
 
-const getStmt = db.prepare(`
-  SELECT c.*,
-    (SELECT hearing_date FROM hearings h WHERE h.case_id = c.id ORDER BY h.hearing_date DESC LIMIT 1) AS last_hearing_date,
-    (SELECT title FROM hearings h WHERE h.case_id = c.id ORDER BY h.hearing_date DESC LIMIT 1) AS last_hearing_title,
-    (SELECT COUNT(*) FROM hearings h WHERE h.case_id = c.id) AS hearing_count
-  FROM cases c WHERE c.id = ?
-`);
+async function getCaseRow(id) {
+  const { rows } = await pool.query(`${LIST_SELECT} WHERE c.id = $1`, [id]);
+  return rows[0] || null;
+}
 
-const hearingsStmt = db.prepare(`
-  SELECT * FROM hearings WHERE case_id = ? ORDER BY hearing_date DESC, id DESC
-`);
+async function getHearingsForCase(caseId) {
+  const { rows } = await pool.query(
+    "SELECT * FROM hearings WHERE case_id = $1 ORDER BY hearing_date DESC, id DESC",
+    [caseId]
+  );
+  return rows;
+}
 
-const insertCaseStmt = db.prepare(`
-  INSERT INTO cases (case_number, cnr, status, court_establishment, place, coram, filed_date,
-    next_hearing_date, next_hearing_time, next_hearing_note, reminder_enabled,
-    client_name, client_phone, appearing_for)
-  VALUES (@case_number, @cnr, @status, @court_establishment, @place, @coram, @filed_date,
-    @next_hearing_date, @next_hearing_time, @next_hearing_note, @reminder_enabled,
-    @client_name, @client_phone, @appearing_for)
-`);
-
-const insertHearingStmt = db.prepare(`
-  INSERT INTO hearings (case_id, hearing_date, title, note) VALUES (?, ?, ?, ?)
-`);
-
-const getHearingStmt = db.prepare(`
-  SELECT * FROM hearings WHERE id = ? AND case_id = ?
-`);
-
-const deleteCaseStmt = db.prepare(`DELETE FROM cases WHERE id = ?`);
-const deleteHearingStmt = db.prepare(`DELETE FROM hearings WHERE id = ? AND case_id = ?`);
+async function getHearingRow(hearingId, caseId) {
+  const { rows } = await pool.query(
+    "SELECT * FROM hearings WHERE id = $1 AND case_id = $2",
+    [hearingId, caseId]
+  );
+  return rows[0] || null;
+}
 
 function normalizeCaseInput(body) {
   return {
@@ -63,40 +51,60 @@ function normalizeCaseInput(body) {
   };
 }
 
-casesRouter.get("/", (req, res) => {
-  res.json(listStmt.all());
+casesRouter.get("/", async (req, res) => {
+  const { rows } = await pool.query(`${LIST_SELECT} ORDER BY c.created_at DESC`);
+  res.json(rows);
 });
 
-casesRouter.get("/:id", (req, res) => {
-  const c = getStmt.get(req.params.id);
+casesRouter.get("/:id", async (req, res) => {
+  const c = await getCaseRow(req.params.id);
   if (!c) return res.status(404).json({ error: "Case not found" });
-  res.json({ ...c, hearings: hearingsStmt.all(req.params.id) });
+  res.json({ ...c, hearings: await getHearingsForCase(req.params.id) });
 });
 
-casesRouter.post("/", (req, res) => {
+casesRouter.post("/", async (req, res) => {
   const data = normalizeCaseInput(req.body);
   if (!data.case_number || !data.status) {
     return res.status(400).json({ error: "case_number and status are required" });
   }
 
-  const result = db.transaction(() => {
-    const { lastInsertRowid } = insertCaseStmt.run(data);
+  const client = await pool.connect();
+  let newId;
+  try {
+    await client.query("BEGIN");
+    const insertResult = await client.query(
+      `INSERT INTO cases (case_number, cnr, status, court_establishment, place, coram, filed_date,
+        next_hearing_date, next_hearing_time, next_hearing_note, reminder_enabled,
+        client_name, client_phone, appearing_for)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      RETURNING id`,
+      [
+        data.case_number, data.cnr, data.status, data.court_establishment, data.place, data.coram,
+        data.filed_date, data.next_hearing_date, data.next_hearing_time, data.next_hearing_note,
+        data.reminder_enabled, data.client_name, data.client_phone, data.appearing_for,
+      ]
+    );
+    newId = insertResult.rows[0].id;
+
     if (req.body.last_hearing_date) {
-      insertHearingStmt.run(
-        lastInsertRowid,
-        req.body.last_hearing_date,
-        req.body.last_hearing_title || "Hearing recorded",
-        req.body.last_hearing_note || null
+      await client.query(
+        "INSERT INTO hearings (case_id, hearing_date, title, note) VALUES ($1, $2, $3, $4)",
+        [newId, req.body.last_hearing_date, req.body.last_hearing_title || "Hearing recorded", req.body.last_hearing_note || null]
       );
     }
-    return lastInsertRowid;
-  })();
+    await client.query("COMMIT");
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
 
-  res.status(201).json(getStmt.get(result));
+  res.status(201).json(await getCaseRow(newId));
 });
 
-casesRouter.patch("/:id", (req, res) => {
-  const existing = getStmt.get(req.params.id);
+casesRouter.patch("/:id", async (req, res) => {
+  const existing = await getCaseRow(req.params.id);
   if (!existing) return res.status(404).json({ error: "Case not found" });
 
   const fields = [
@@ -111,23 +119,25 @@ casesRouter.patch("/:id", (req, res) => {
   if ("reminder_enabled" in req.body) {
     updates.reminder_enabled = req.body.reminder_enabled ? 1 : 0;
   }
-  if (Object.keys(updates).length === 0) {
+  const keys = Object.keys(updates);
+  if (keys.length === 0) {
     return res.json(existing);
   }
-  const setClause = Object.keys(updates).map((k) => `${k} = @${k}`).join(", ");
-  db.prepare(`UPDATE cases SET ${setClause} WHERE id = @id`).run({ ...updates, id: req.params.id });
-  res.json(getStmt.get(req.params.id));
+  const setClause = keys.map((k, i) => `${k} = $${i + 1}`).join(", ");
+  const values = keys.map((k) => updates[k]);
+  await pool.query(`UPDATE cases SET ${setClause} WHERE id = $${keys.length + 1}`, [...values, req.params.id]);
+  res.json(await getCaseRow(req.params.id));
 });
 
-casesRouter.delete("/:id", (req, res) => {
-  const existing = getStmt.get(req.params.id);
+casesRouter.delete("/:id", async (req, res) => {
+  const existing = await getCaseRow(req.params.id);
   if (!existing) return res.status(404).json({ error: "Case not found" });
-  deleteCaseStmt.run(req.params.id);
+  await pool.query("DELETE FROM cases WHERE id = $1", [req.params.id]);
   res.status(204).end();
 });
 
-casesRouter.patch("/:id/hearings/:hearingId", (req, res) => {
-  const existing = getHearingStmt.get(req.params.hearingId, req.params.id);
+casesRouter.patch("/:id/hearings/:hearingId", async (req, res) => {
+  const existing = await getHearingRow(req.params.hearingId, req.params.id);
   if (!existing) return res.status(404).json({ error: "Hearing not found" });
 
   const fields = ["hearing_date", "title", "note"];
@@ -138,23 +148,25 @@ casesRouter.patch("/:id/hearings/:hearingId", (req, res) => {
   if (updates.title !== undefined && !String(updates.title).trim()) {
     return res.status(400).json({ error: "title is required" });
   }
-  if (Object.keys(updates).length === 0) {
+  const keys = Object.keys(updates);
+  if (keys.length === 0) {
     return res.json(existing);
   }
-  const setClause = Object.keys(updates).map((k) => `${k} = @${k}`).join(", ");
-  db.prepare(`UPDATE hearings SET ${setClause} WHERE id = @id`).run({ ...updates, id: req.params.hearingId });
-  res.json(getHearingStmt.get(req.params.hearingId, req.params.id));
+  const setClause = keys.map((k, i) => `${k} = $${i + 1}`).join(", ");
+  const values = keys.map((k) => updates[k]);
+  await pool.query(`UPDATE hearings SET ${setClause} WHERE id = $${keys.length + 1}`, [...values, req.params.hearingId]);
+  res.json(await getHearingRow(req.params.hearingId, req.params.id));
 });
 
-casesRouter.delete("/:id/hearings/:hearingId", (req, res) => {
-  const existing = getHearingStmt.get(req.params.hearingId, req.params.id);
+casesRouter.delete("/:id/hearings/:hearingId", async (req, res) => {
+  const existing = await getHearingRow(req.params.hearingId, req.params.id);
   if (!existing) return res.status(404).json({ error: "Hearing not found" });
-  deleteHearingStmt.run(req.params.hearingId, req.params.id);
+  await pool.query("DELETE FROM hearings WHERE id = $1 AND case_id = $2", [req.params.hearingId, req.params.id]);
   res.status(204).end();
 });
 
-casesRouter.post("/:id/hearings", (req, res) => {
-  const existing = getStmt.get(req.params.id);
+casesRouter.post("/:id/hearings", async (req, res) => {
+  const existing = await getCaseRow(req.params.id);
   if (!existing) return res.status(404).json({ error: "Case not found" });
 
   const { hearing_date, title, note, next_hearing_date, next_hearing_time, next_hearing_note } = req.body;
@@ -162,19 +174,24 @@ casesRouter.post("/:id/hearings", (req, res) => {
     return res.status(400).json({ error: "hearing_date and title are required" });
   }
 
-  db.transaction(() => {
-    insertHearingStmt.run(req.params.id, hearing_date, title, note || null);
-    db.prepare(`
-      UPDATE cases SET next_hearing_date = @next_hearing_date,
-        next_hearing_time = @next_hearing_time, next_hearing_note = @next_hearing_note
-      WHERE id = @id
-    `).run({
-      id: req.params.id,
-      next_hearing_date: next_hearing_date || null,
-      next_hearing_time: next_hearing_time || null,
-      next_hearing_note: next_hearing_note || null,
-    });
-  })();
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      "INSERT INTO hearings (case_id, hearing_date, title, note) VALUES ($1, $2, $3, $4)",
+      [req.params.id, hearing_date, title, note || null]
+    );
+    await client.query(
+      "UPDATE cases SET next_hearing_date = $1, next_hearing_time = $2, next_hearing_note = $3 WHERE id = $4",
+      [next_hearing_date || null, next_hearing_time || null, next_hearing_note || null, req.params.id]
+    );
+    await client.query("COMMIT");
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
 
-  res.status(201).json({ ...getStmt.get(req.params.id), hearings: hearingsStmt.all(req.params.id) });
+  res.status(201).json({ ...(await getCaseRow(req.params.id)), hearings: await getHearingsForCase(req.params.id) });
 });
