@@ -5,7 +5,7 @@ import "./index.css";
 import { NewCasePage } from "./pages/NewCasePage.jsx";
 import { CaseDetailPage } from "./pages/CaseDetailPage.jsx";
 import { CalendarPage } from "./pages/CalendarPage.jsx";
-import { HearingsRedirect } from "./pages/HearingsRedirect.jsx";
+import { HearingsCasePicker } from "./pages/HearingsCasePicker.jsx";
 import { LegacyCaseRedirect } from "./pages/LegacyCaseRedirect.jsx";
 
 createRoot(document.getElementById("root")).render(
@@ -15,7 +15,7 @@ createRoot(document.getElementById("root")).render(
         <Route path="/" element={<Navigate to="/cases/new" replace />} />
         <Route path="/cases/new" element={<NewCasePage />} />
         <Route path="/cases/:id" element={<LegacyCaseRedirect />} />
-        <Route path="/hearings" element={<HearingsRedirect />} />
+        <Route path="/hearings" element={<HearingsCasePicker />} />
         <Route path="/hearings/:id" element={<CaseDetailPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="*" element={<Navigate to="/cases/new" replace />} />

@@ -9,13 +9,11 @@ import { statusPillColors } from "../lib/status";
 export function CaseDetailPage() {
   const { id } = useParams();
   const [caseData, setCaseData] = useState(null);
-  const [openMatters, setOpenMatters] = useState([]);
   const [error, setError] = useState(null);
   const [showAddHearing, setShowAddHearing] = useState(false);
 
   const load = useCallback(() => {
     api.getCase(id).then(setCaseData).catch((e) => setError(e.message));
-    api.listCases().then((rows) => setOpenMatters(rows.filter((c) => c.status !== "Disposed").slice(0, 6))).catch(() => {});
   }, [id]);
 
   useEffect(() => {
@@ -46,27 +44,7 @@ export function CaseDetailPage() {
 
   return (
     <div className="app-shell">
-      <Sidebar>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
-          <div className="label" style={{ letterSpacing: ".12em" }}>Open matters</div>
-          {openMatters.map((c) => (
-            <Link
-              key={c.id}
-              to={`/hearings/${c.id}`}
-              style={{
-                padding: "12px 14px",
-                borderRadius: 12,
-                fontSize: 15,
-                fontWeight: String(c.id) === id ? 600 : 400,
-                background: String(c.id) === id ? "var(--surface-alt)" : "transparent",
-                color: String(c.id) === id ? "var(--ink)" : "var(--ink-muted)",
-              }}
-            >
-              {c.case_number}
-            </Link>
-          ))}
-        </div>
-      </Sidebar>
+      <Sidebar />
 
       <div className="main-content">
         <div style={{ flex: "none", padding: "28px 32px 22px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
