@@ -1,19 +1,18 @@
 import { Router } from "express";
-import { db } from "../db.js";
+import { pool } from "../db.js";
 import { todayISO, diffDays, parseISO } from "../dates.js";
 
 export const calendarRouter = Router();
 
-const casesWithNextHearing = db.prepare(`
-  SELECT id, case_number, status, court_establishment, coram, next_hearing_date, next_hearing_time, next_hearing_note
-  FROM cases WHERE next_hearing_date IS NOT NULL
-`);
+async function getCasesWithNextHearing() {
+  const { rows } = await pool.query(`
+    SELECT id, case_number, status, court_establishment, coram, next_hearing_date, next_hearing_time, next_hearing_note
+    FROM cases WHERE next_hearing_date IS NOT NULL
+  `);
+  return rows;
+}
 
-const openCasesWithoutNextHearing = db.prepare(`
-  SELECT case_number FROM cases WHERE next_hearing_date IS NULL AND status != 'Disposed' ORDER BY created_at DESC
-`);
-
-calendarRouter.get("/", (req, res) => {
+calendarRouter.get("/", async (req, res) => {
   const now = new Date();
   const year = Number(req.query.year) || now.getFullYear();
   const month = Number(req.query.month) || now.getMonth() + 1; // 1-12
@@ -24,7 +23,7 @@ calendarRouter.get("/", (req, res) => {
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const totalCells = Math.ceil((leading + daysInMonth) / 7) * 7;
 
-  const hearings = casesWithNextHearing.all();
+  const hearings = await getCasesWithNextHearing();
   const marksByDay = new Map();
   for (const h of hearings) {
     const d = parseISO(h.next_hearing_date);
@@ -63,17 +62,21 @@ calendarRouter.get("/", (req, res) => {
   });
 });
 
-calendarRouter.get("/upcoming", (req, res) => {
+calendarRouter.get("/upcoming", async (req, res) => {
   const windowDays = Number(req.query.days) || 7;
   const today = todayISO();
-  const upcoming = casesWithNextHearing.all()
+  const hearings = await getCasesWithNextHearing();
+  const upcoming = hearings
     .filter((h) => {
       const d = diffDays(today, h.next_hearing_date);
       return d >= 0 && d <= windowDays;
     })
     .sort((a, b) => a.next_hearing_date.localeCompare(b.next_hearing_date));
 
-  const needsDates = openCasesWithoutNextHearing.all().map((c) => c.case_number);
+  const { rows } = await pool.query(
+    "SELECT case_number FROM cases WHERE next_hearing_date IS NULL AND status != 'Disposed' ORDER BY created_at DESC"
+  );
+  const needsDates = rows.map((c) => c.case_number);
 
   res.json({ upcoming, needsDates });
 });
