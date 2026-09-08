@@ -78,8 +78,8 @@ whatever you set `APP_PASSWORD` to.
 **2. API — Vercel project #1, rooted at `server/`**
 
 - Import the repo into Vercel, set its **Root Directory** to `server`.
-- No build command needed — Vercel auto-detects the `api/[...path].js`
-  function.
+- No build command needed — Vercel auto-detects the `api/index.js`
+  function; `vercel.json` rewrites all `/api/*` requests to it.
 - Add environment variables: `DATABASE_URL` (the Supabase string above),
   `APP_PASSWORD`, `AUTH_SECRET` (generate with
   `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`).
