@@ -58,3 +58,12 @@ export async function initDb() {
     ALTER TABLE cases ADD COLUMN IF NOT EXISTS appearing_for TEXT;
   `);
 }
+
+// Memoized so a warm serverless instance only pays for initDb() once, but
+// callable freely — anything that needs the DB ready awaits this rather
+// than calling initDb() directly.
+let readyPromise;
+export function ensureDbReady() {
+  if (!readyPromise) readyPromise = initDb();
+  return readyPromise;
+}
