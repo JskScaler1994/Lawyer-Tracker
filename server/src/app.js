@@ -68,3 +68,10 @@ app.use((err, req, res, next) => {
   console.error(err);
   res.status(500).json({ error: err.message || "Internal server error" });
 });
+
+// Vercel's zero-config Node builder falls back to invoking this module
+// directly (as a default-exported handler) for any request it can't match
+// elsewhere, e.g. "/" or "/favicon.ico". An Express app is already a valid
+// (req, res) => {} handler, so exporting it as the default satisfies that
+// convention instead of crashing with "Invalid export found in module".
+export default app;
