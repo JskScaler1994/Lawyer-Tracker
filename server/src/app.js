@@ -27,11 +27,17 @@ async function requireDb(req, res, next) {
 }
 
 const startedAt = new Date().toISOString();
-let commit = "unknown";
-try {
-  commit = execSync("git rev-parse --short HEAD", { cwd: import.meta.dirname }).toString().trim();
-} catch {
-  // Not a git checkout (or git unavailable) — leave as "unknown".
+// Vercel sets this automatically for every deployment — no need to shell
+// out to git, which isn't reliably available (no .git checkout, and
+// spawning a child process in the serverless sandbox can hang or crash
+// the whole function instead of failing cleanly) in that environment.
+let commit = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7);
+if (!commit) {
+  try {
+    commit = execSync("git rev-parse --short HEAD", { cwd: import.meta.dirname }).toString().trim();
+  } catch {
+    commit = "unknown";
+  }
 }
 
 // Login and version deliberately don't touch the database, so they aren't
