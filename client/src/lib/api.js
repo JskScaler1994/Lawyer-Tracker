@@ -1,4 +1,8 @@
-const BASE = import.meta.env.VITE_API_URL || "http://localhost:4000";
+// Strip any trailing slash — a `VITE_API_URL` set with one (e.g.
+// "https://api.example.com/") would otherwise combine with our own
+// leading-"/api/..." paths into "https://api.example.com//api/...", which
+// gets redirected by most hosts and breaks CORS preflight entirely.
+const BASE = (import.meta.env.VITE_API_URL || "http://localhost:4000").replace(/\/+$/, "");
 const TOKEN_KEY = "prasanna:auth_token";
 
 export const auth = {
