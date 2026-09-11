@@ -152,11 +152,6 @@ export function CaseDetailPage() {
                 : "Add a hearing to schedule the next date"}
             </div>
           </div>
-          <div className="card" style={{ padding: 20, display: "flex", flexDirection: "column", gap: 6 }}>
-            <div className="label">Filed</div>
-            <div className="heading-font" style={{ fontSize: 24, fontWeight: 700 }}>{formatShort(caseData.filed_date)}</div>
-            <div style={{ fontSize: 14, color: "var(--muted-2)" }}>{caseData.hearing_count} hearing{caseData.hearing_count === 1 ? "" : "s"} so far</div>
-          </div>
         </div>
 
         <div style={{ flex: 1, padding: "4px 32px 28px", display: "flex", flexDirection: "column", gap: 16, minHeight: 0 }}>
