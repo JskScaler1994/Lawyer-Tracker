@@ -6,7 +6,7 @@ export const calendarRouter = Router();
 
 async function getCasesWithNextHearing() {
   const { rows } = await pool.query(`
-    SELECT id, case_number, status, court_establishment, coram, next_hearing_date, next_hearing_time, next_hearing_note
+    SELECT id, case_number, status, court_establishment, place, coram, next_hearing_date, next_hearing_time, next_hearing_note
     FROM cases WHERE next_hearing_date IS NOT NULL
   `);
   return rows;

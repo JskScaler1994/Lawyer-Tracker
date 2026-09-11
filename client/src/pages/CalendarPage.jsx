@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Sidebar } from "../components/Sidebar.jsx";
 import { api } from "../lib/api";
 import { formatLong, MONTH_NAMES, relativeLabel, todayISO } from "../lib/dates";
+import { groupByPlace } from "../lib/places";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -146,23 +147,44 @@ export function CalendarPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                 <div className="label">Selected date</div>
                 <div className="heading-font" style={{ fontSize: 20, fontWeight: 700 }}>{formatLong(selectedDay.date)}</div>
+                {selectedDay.hearings.length > 0 && (() => {
+                  const groups = groupByPlace(selectedDay.hearings);
+                  return (
+                    <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>
+                      {selectedDay.hearings.length} hearing{selectedDay.hearings.length === 1 ? "" : "s"}
+                      {groups.length > 1 ? ` across ${groups.length} places` : ""}
+                    </div>
+                  );
+                })()}
               </div>
               {selectedDay.hearings.length === 0 && (
                 <div style={{ fontSize: 15, color: "var(--muted-2)" }}>No cases listed for this date.</div>
               )}
-              {selectedDay.hearings.map((h) => (
-                <Link
-                  key={h.id}
-                  to={`/hearings/${h.id}`}
-                  style={{ display: "flex", flexDirection: "column", gap: 3, paddingBottom: 16, borderBottom: "1px solid var(--surface-alt)", color: "inherit" }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                    <div style={{ fontSize: 16, fontWeight: 600 }}>{h.case_number}</div>
-                    {h.next_hearing_time && <div style={{ fontSize: 13, color: "var(--muted)", flex: "none" }}>{h.next_hearing_time}</div>}
+              {groupByPlace(selectedDay.hearings).map((group) => (
+                <div key={group.place} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span className="dot" style={{ background: group.color.accent }} />
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--ink-muted)" }}>{group.place}</div>
+                    <div style={{ fontSize: 12, color: "var(--muted)" }}>{group.items.length}</div>
                   </div>
-                  <div style={{ fontSize: 14, color: "var(--muted-2)" }}>{h.next_hearing_note || "Hearing"}</div>
-                  <div style={{ fontSize: 13, color: "var(--muted)" }}>{[h.court_establishment, h.coram].filter(Boolean).join(" · ")}</div>
-                </Link>
+                  {group.items.map((h) => (
+                    <Link
+                      key={h.id}
+                      to={`/hearings/${h.id}`}
+                      style={{
+                        display: "flex", flexDirection: "column", gap: 2, padding: "12px 14px", borderRadius: 12,
+                        background: group.color.tint, borderLeft: `3px solid ${group.color.accent}`, color: "inherit",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                        <div style={{ fontSize: 15, fontWeight: 700 }}>{h.case_number}</div>
+                        {h.next_hearing_time && <div style={{ fontSize: 12, color: "var(--muted)", flex: "none" }}>{h.next_hearing_time}</div>}
+                      </div>
+                      <div style={{ fontSize: 13, color: "var(--ink-muted)" }}>{h.next_hearing_note || "Hearing"}</div>
+                      <div style={{ fontSize: 12, color: "var(--muted)" }}>{[h.court_establishment, h.coram].filter(Boolean).join(" · ")}</div>
+                    </Link>
+                  ))}
+                </div>
               ))}
               <div style={{ fontSize: 13, color: "var(--muted)" }}>{relativeLabel(selectedDay.date)}</div>
             </>
