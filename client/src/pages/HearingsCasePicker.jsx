@@ -1,24 +1,44 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Sidebar } from "../components/Sidebar.jsx";
+import { SearchIcon } from "../components/icons.jsx";
 import { api } from "../lib/api";
 import { formatShort, relativeLabel } from "../lib/dates";
 import { statusPillColors, urgencyColor } from "../lib/status";
 
 export function HearingsCasePicker() {
   const [cases, setCases] = useState(null);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     api.listCases().then(setCases).catch(() => setCases([]));
   }, []);
 
+  const query = search.trim().toLowerCase();
+  const filtered = cases && query ? cases.filter((c) => c.case_number.toLowerCase().includes(query)) : cases;
+
   return (
     <div className="app-shell">
       <Sidebar />
       <div className="main-content" style={{ padding: "32px 32px 40px", overflow: "auto" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 24 }}>
-          <div className="heading-font" style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-.02em" }}>Hearings</div>
-          <div style={{ fontSize: 15, color: "var(--muted-2)" }}>Select a case to view its hearing history.</div>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 20, marginBottom: 24, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div className="heading-font" style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-.02em" }}>Hearings</div>
+            <div style={{ fontSize: 15, color: "var(--muted-2)" }}>Select a case to view its hearing history.</div>
+          </div>
+
+          {cases && cases.length > 0 && (
+            <div style={{ position: "relative", width: 260 }}>
+              <SearchIcon style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", color: "var(--muted)", pointerEvents: "none" }} />
+              <input
+                className="field-input"
+                style={{ height: 44, paddingLeft: 40, fontSize: 15 }}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by case number"
+              />
+            </div>
+          )}
         </div>
 
         {cases === null && <div style={{ color: "var(--muted)" }}>Loading…</div>}
@@ -30,9 +50,13 @@ export function HearingsCasePicker() {
           </div>
         )}
 
-        {cases && cases.length > 0 && (
+        {cases && cases.length > 0 && filtered.length === 0 && (
+          <div style={{ color: "var(--muted-2)" }}>No cases match "{search.trim()}".</div>
+        )}
+
+        {filtered && filtered.length > 0 && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 18 }}>
-            {cases.map((c) => {
+            {filtered.map((c) => {
               const pill = statusPillColors(c.status);
               return (
                 <Link

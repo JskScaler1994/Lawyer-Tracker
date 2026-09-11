@@ -6,6 +6,15 @@ export function EditIcon(props) {
   );
 }
 
+export function SearchIcon(props) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <circle cx="8.5" cy="8.5" r="5.5" />
+      <path d="M16.5 16.5l-4-4" />
+    </svg>
+  );
+}
+
 export function TrashIcon(props) {
   return (
     <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...props}>
