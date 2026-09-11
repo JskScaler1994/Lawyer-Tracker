@@ -32,12 +32,13 @@ export function ClientsPage() {
         {rows.length > 0 && (
           <div className="card" style={{ overflow: "hidden" }}>
             <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 640 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 800 }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--border)" }}>
                     <Th>Client name</Th>
                     <Th>Phone</Th>
                     <Th>Case number</Th>
+                    <Th>Court establishment</Th>
                     <Th>Appearing for</Th>
                   </tr>
                 </thead>
@@ -49,6 +50,7 @@ export function ClientsPage() {
                       <Td>
                         <Link to={`/hearings/${c.id}`} style={{ fontWeight: 600, color: "inherit" }}>{c.case_number}</Link>
                       </Td>
+                      <Td>{c.court_establishment || "—"}</Td>
                       <Td>{c.appearing_for || "—"}</Td>
                     </tr>
                   ))}
