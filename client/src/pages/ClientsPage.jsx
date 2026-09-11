@@ -5,28 +5,50 @@ import { api } from "../lib/api";
 
 export function ClientsPage() {
   const [cases, setCases] = useState(null);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     api.listCases().then(setCases).catch(() => setCases([]));
   }, []);
 
-  const rows = (cases || []).filter((c) => c.client_name || c.client_phone);
+  const withClientInfo = (cases || []).filter((c) => c.client_name || c.client_phone);
+  const query = search.trim().toLowerCase();
+  const rows = query ? withClientInfo.filter((c) => c.case_number.toLowerCase().includes(query)) : withClientInfo;
 
   return (
     <div className="app-shell">
       <Sidebar />
       <div className="main-content" style={{ padding: "32px 32px 40px", overflow: "auto" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 24 }}>
-          <div className="heading-font" style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-.02em" }}>Clients</div>
-          <div style={{ fontSize: 15, color: "var(--muted-2)" }}>Case numbers with their associated client and phone number.</div>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 20, marginBottom: 24, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div className="heading-font" style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-.02em" }}>Clients</div>
+            <div style={{ fontSize: 15, color: "var(--muted-2)" }}>Case numbers with their associated client and phone number.</div>
+          </div>
+
+          {cases && withClientInfo.length > 0 && (
+            <div style={{ position: "relative", width: 260 }}>
+              <SearchIcon style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", color: "var(--muted)", pointerEvents: "none" }} />
+              <input
+                className="field-input"
+                style={{ height: 44, paddingLeft: 40, fontSize: 15 }}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by case number"
+              />
+            </div>
+          )}
         </div>
 
         {cases === null && <div style={{ color: "var(--muted)" }}>Loading…</div>}
 
-        {cases && rows.length === 0 && (
+        {cases && withClientInfo.length === 0 && (
           <div style={{ color: "var(--muted-2)" }}>
             No client details recorded yet. Add a client name and phone number from a case's Edit form to see them here.
           </div>
+        )}
+
+        {cases && withClientInfo.length > 0 && rows.length === 0 && (
+          <div style={{ color: "var(--muted-2)" }}>No clients match "{search.trim()}".</div>
         )}
 
         {rows.length > 0 && (
@@ -61,6 +83,15 @@ export function ClientsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+function SearchIcon(props) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <circle cx="8.5" cy="8.5" r="5.5" />
+      <path d="M16.5 16.5l-4-4" />
+    </svg>
   );
 }
 
