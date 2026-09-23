@@ -4,6 +4,7 @@ import { execSync } from "node:child_process";
 import { pool, ensureDbReady } from "./db.js";
 import { casesRouter } from "./routes/cases.js";
 import { calendarRouter } from "./routes/calendar.js";
+import { mcpRouter } from "./routes/mcp.js";
 import { addDaysISO, todayISO } from "./dates.js";
 import { checkPassword, issueToken, requireAuth } from "./auth.js";
 
@@ -56,6 +57,7 @@ app.get("/api/version", (req, res) => {
 
 app.use("/api/cases", requireDb, requireAuth, casesRouter);
 app.use("/api/calendar", requireDb, requireAuth, calendarRouter);
+app.use("/api/mcp", requireDb, requireAuth, mcpRouter);
 
 app.get("/api/stats", requireDb, requireAuth, async (req, res) => {
   const tomorrow = addDaysISO(todayISO(), 1);
