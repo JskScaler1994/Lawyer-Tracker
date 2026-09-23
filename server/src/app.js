@@ -64,9 +64,11 @@ app.get("/api/stats", requireDb, requireAuth, async (req, res) => {
 });
 
 // Express 5 forwards rejected async handler promises here automatically.
+// The service layer (services/*.js) throws HttpError for expected failures
+// (404s, validation) with a `status` to honor; anything else is a real 500.
 app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(500).json({ error: err.message || "Internal server error" });
+  if (!err.status) console.error(err);
+  res.status(err.status || 500).json({ error: err.message || "Internal server error" });
 });
 
 // Vercel's zero-config Node builder falls back to invoking this module
